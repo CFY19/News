@@ -15,16 +15,19 @@ const FeedCard = ({ item }) => {
     }
   };
 
+  const displayImage = item.imageUrl || item.image;
+
   return (
     <article
       onClick={() => navigate(`/detail/${item.id}`)}
-      className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-soft hover:shadow-lg transition-all duration-300 cursor-pointer"
+      className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-soft hover:shadow-lg transition-all duration-300 cursor-pointer group"
     >
-      {item.image && (
-        <div className="relative h-48 bg-cover bg-center" style={{ backgroundImage: `url('${item.image}')` }}>
+      {displayImage && (
+        <div className="relative h-56 bg-cover bg-center overflow-hidden" style={{ backgroundImage: `url('${displayImage}')` }}>
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
           {item.type === 'Video' && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-               <button className="size-16 rounded-full bg-white/20 glass-effect flex items-center justify-center text-white border border-white/40 shadow-2xl">
+            <div className="absolute inset-0 flex items-center justify-center">
+               <button className="size-16 rounded-full bg-white/20 glass-effect flex items-center justify-center text-white border border-white/40 shadow-2xl scale-100 group-hover:scale-110 transition-transform duration-300">
                 <span className="material-symbols-outlined text-4xl fill-1">play_arrow</span>
               </button>
             </div>
@@ -40,7 +43,7 @@ const FeedCard = ({ item }) => {
           <span className="text-soft-gray text-xs font-medium">• {item.readTime}</span>
         </div>
 
-        <h3 className="text-xl font-bold leading-tight mb-3 text-deep-charcoal tracking-tight">
+        <h3 className="text-xl font-bold leading-tight mb-3 text-deep-charcoal tracking-tight group-hover:text-primary transition-colors">
           {item.title}
         </h3>
 
@@ -50,7 +53,7 @@ const FeedCard = ({ item }) => {
 
         <div className="flex flex-wrap gap-2.5 mb-5">
           {item.tags.map(tag => (
-            <span key={tag} className="text-primary text-xs font-semibold">{tag}</span>
+            <span key={tag} className="text-primary text-xs font-semibold">#{tag}</span>
           ))}
         </div>
 

@@ -1,3 +1,7 @@
+/**
+ * To make this feed fully autoupdatable, you can replace this static array
+ * with a fetch call to an API or an RSS-to-JSON service.
+ */
 export const feedItems = [
   {
     id: 1,
@@ -9,7 +13,7 @@ export const feedItems = [
     author: 'Alex Rivero',
     authorImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
     imageUrl: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=800&h=400',
-    date: new Date().toISOString(), // Today
+    date: new Date().toISOString(),
     sourceUrl: 'https://example.com/article1',
     fullContent: {
       title: 'Architecting Micro-frontends in 2024: A Pragmatic Guide',
@@ -39,7 +43,8 @@ export const feedItems = [
     tags: ['golang', 'database'],
     author: 'Sarah Chen',
     authorImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+    imageUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://github.com/example/turbo-sql',
   },
   {
@@ -52,7 +57,7 @@ export const feedItems = [
     author: 'Marcus Thorne',
     authorImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100&h=100',
     imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=800&h=400',
-    date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), // 4 days ago
+    date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://youtube.com/watch?v=example',
   },
   {
@@ -64,7 +69,8 @@ export const feedItems = [
     tags: ['vscode', 'productivity'],
     author: 'Jenna Lopez',
     authorImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(), // 8 days ago (Last Week)
+    imageUrl: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://example.com/reels/1',
   },
   {
@@ -76,7 +82,8 @@ export const feedItems = [
     tags: ['htmx', 'webdev', 'minimalism'],
     author: 'David Park',
     authorImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago (Last Week)
+    imageUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://example.com/post/1',
   },
   {
@@ -88,7 +95,8 @@ export const feedItems = [
     tags: ['css', 'frontend', 'design'],
     author: 'Emma Wilson',
     authorImage: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days ago (Last Month)
+    imageUrl: 'https://images.unsplash.com/photo-1507721999472-8ed4421c4af2?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://example.com/css-grid',
   },
   {
@@ -100,7 +108,8 @@ export const feedItems = [
     tags: ['react', 'state-management'],
     author: 'Alex Rivero',
     authorImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), // 20 days ago (Last Month)
+    imageUrl: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://example.com/zustand-redux',
   },
   {
@@ -112,7 +121,8 @@ export const feedItems = [
     tags: ['wasm', 'webdev', 'cloud'],
     author: 'Sarah Chen',
     authorImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(), // 25 days ago (Last Month)
+    imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc48?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://example.com/wasm-future',
   },
   {
@@ -124,7 +134,8 @@ export const feedItems = [
     tags: ['elixir', 'phoenix', 'real-time'],
     author: 'Marcus Thorne',
     authorImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago (Last Month)
+    imageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://example.com/elixir-chat',
   },
   {
@@ -136,7 +147,8 @@ export const feedItems = [
     tags: ['javascript', 'tooling'],
     author: 'Jenna Lopez',
     authorImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    imageUrl: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://example.com/biome-tool',
   },
   {
@@ -148,7 +160,8 @@ export const feedItems = [
     tags: ['ai', 'tensorflow', 'javascript'],
     author: 'David Park',
     authorImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
+    imageUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://example.com/deep-learning-web',
   },
   {
@@ -160,7 +173,8 @@ export const feedItems = [
     tags: ['performance', 'web-vitals'],
     author: 'Emma Wilson',
     authorImage: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100',
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+    imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800&h=400',
+    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     sourceUrl: 'https://example.com/core-web-vitals',
   }
 ];

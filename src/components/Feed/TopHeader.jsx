@@ -14,10 +14,6 @@ const TopHeader = ({ searchQuery, setSearchQuery }) => {
           <button className="p-2 text-soft-gray hover:text-primary transition-colors">
             <span className="material-symbols-outlined">notifications</span>
           </button>
-          <div
-            className="size-9 rounded-full bg-cover bg-center border border-gray-200 shadow-sm"
-            style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuARlzzIN2UXgGBVyco2L-dk-OnIExt802DJmc_ZAXRD_Eark6aNJz30NQpMmAm-qitimHPeAkemTU4R4XZB6k_saiM1sRVOteF4OqMqat3v71TNToxzdycnOcN4_4QMLTpjeRD_G1mY5N6YDYbusKPotv_wMDgknZSHn5LUjGgl9mH2fMvZCR9WK1xZprFjTkYqWfdGYeO1vc8ETmV90Yt6SlE6OJHFwLrhSD8iQuyLDSl6PHijRH714KOrfEP4OwP2dePalWAzs6hN')" }}
-          ></div>
         </div>
       </div>
       <div className="px-4 pb-2">

@@ -12,7 +12,6 @@ function App() {
         <Route path="/detail/:id" element={<ContentDetail />} />
         <Route path="/explore" element={<PlaceholderPage title="Explore" />} />
         <Route path="/saved" element={<PlaceholderPage title="Saved" />} />
-        <Route path="/profile" element={<PlaceholderPage title="Profile" />} />
         <Route path="*" element={<MainFeed />} />
       </Routes>
     </Router>
