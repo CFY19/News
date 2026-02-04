@@ -12,11 +12,14 @@ const MainFeed = () => {
   const [activeDateRange, setActiveDateRange] = useState('This Week');
 
   const filteredItems = useMemo(() => {
+    // Sanitize search query: trim and remove special characters that could be used for injection
+    const sanitizedQuery = searchQuery.trim().replace(/[<>{}()]/g, '');
+
     let items = feedItems.filter(item => {
       // Search logic
-      const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesSearch = item.title.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
+                          item.description.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
+                          item.tags.some(tag => tag.toLowerCase().includes(sanitizedQuery.toLowerCase()));
 
       // Category logic
       const categoryMap = {
