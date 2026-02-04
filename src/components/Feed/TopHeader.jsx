@@ -11,9 +11,7 @@ const TopHeader = ({ searchQuery, setSearchQuery }) => {
           <h1 className="text-xl font-bold tracking-tight text-deep-charcoal">Tech Feed</h1>
         </div>
         <div className="flex items-center gap-3">
-          <button className="p-2 text-soft-gray hover:text-primary transition-colors">
-            <span className="material-symbols-outlined">notifications</span>
-          </button>
+          {/* Notifications removed as per request */}
         </div>
       </div>
       <div className="px-4 pb-2">
