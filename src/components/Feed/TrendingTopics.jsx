@@ -12,25 +12,39 @@ const TrendingTopics = ({ items, activeHashtag, setActiveHashtag }) => {
       });
     });
 
-    return Object.entries(tagCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name, count], index) => {
-        const colors = [
-          'text-primary',
-          'text-brand-teal',
-          'text-deep-charcoal',
-          'text-rose-500',
-          'text-blue-600'
-        ];
-        return {
-          id: index + 1,
-          name: `#${name}`,
-          tagName: name,
-          count: `${count} stories`,
-          color: colors[index % colors.length]
-        };
-      });
+    // Bias: Always include XR and force it to the first position
+    const sortedEntries = Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1]);
+
+    // Find XR entry
+    const xrIndex = sortedEntries.findIndex(([name]) => name === 'xr');
+    let xrEntry;
+
+    if (xrIndex !== -1) {
+      xrEntry = sortedEntries.splice(xrIndex, 1)[0];
+    } else {
+      xrEntry = ['xr', 0];
+    }
+
+    // Re-insert XR at the beginning
+    const finalEntries = [xrEntry, ...sortedEntries].slice(0, 5);
+
+    return finalEntries.map(([name, count], index) => {
+      const colors = [
+        'text-brand-teal', // XR (Teal)
+        'text-primary',    // 2nd
+        'text-deep-charcoal',
+        'text-rose-500',
+        'text-blue-600'
+      ];
+      return {
+        id: index + 1,
+        name: `#${name.toUpperCase()}`,
+        tagName: name,
+        count: `${count} stories`,
+        color: colors[index % colors.length]
+      };
+    });
   }, [items]);
 
   const handleHashtagClick = (tag) => {

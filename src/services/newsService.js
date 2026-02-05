@@ -4,20 +4,29 @@ const REDDIT_API_UNITY = 'https://www.reddit.com/r/Unity3D/top.json?limit=20&t=w
 const REDDIT_API_VR = 'https://www.reddit.com/r/virtualreality/top.json?limit=20&t=week';
 
 /**
- * Gets a placeholder image based on category if original is missing
+ * Gets a branded Fyware placeholder image based on category if original is missing.
+ * Colors: Unity/XR -> Brand Teal (#0D9488), AI/Tech -> Indigo (#4F46E5), Video -> Rose (#F43F5E)
  */
-const getCategoryPlaceholder = (type, tags = []) => {
+const getFywarePlaceholder = (type, tags = []) => {
   const lowerTags = tags.map(t => t.toLowerCase());
+  let color = '4F46E5'; // Default Indigo
+  let text = 'Fyware+Tech';
+
   if (lowerTags.includes('ai') || lowerTags.includes('openai') || lowerTags.includes('gpt')) {
-    return 'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=1000&auto=format&fit=crop'; // AI Placeholder
+    color = '4F46E5';
+    text = 'Fyware+AI';
+  } else if (lowerTags.includes('xr') || lowerTags.includes('vr') || lowerTags.includes('ar') || lowerTags.includes('mixedreality') || lowerTags.includes('unity')) {
+    color = '0D9488'; // Brand Teal
+    text = 'Fyware+XR';
+  } else if (type === 'Video') {
+    color = 'F43F5E'; // Rose
+    text = 'Fyware+Video';
+  } else if (type === 'Tool') {
+    color = '111827'; // Deep Charcoal
+    text = 'Fyware+Tool';
   }
-  if (lowerTags.includes('xr') || lowerTags.includes('vr') || lowerTags.includes('ar') || lowerTags.includes('mixedreality') || lowerTags.includes('unity')) {
-    return 'https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=1000&auto=format&fit=crop'; // XR Placeholder
-  }
-  if (type === 'Video') {
-    return 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=1000&auto=format&fit=crop'; // Video Placeholder
-  }
-  return 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1000&auto=format&fit=crop'; // Tech/Dev Placeholder
+
+  return `https://placehold.co/600x400/${color}/FFFFFF?text=${text}`;
 };
 
 /**
@@ -27,16 +36,19 @@ const getThumbnail = (url, fallback, type, tags) => {
   const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
   const match = url.match(youtubeRegex);
   if (match && match[1]) {
-    return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+    return `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg`;
   }
-  return fallback || getCategoryPlaceholder(type, tags);
+
+  // LinkedIn/Instagram specific fallback detection (fetching OG is blocked by CORS)
+  if (url.includes('linkedin.com') || url.includes('instagram.com')) {
+    return getFywarePlaceholder(type, tags);
+  }
+
+  return fallback || getFywarePlaceholder(type, tags);
 };
 
 /**
  * Assigns a priority score based on Fyware DNA
- * P1: Unity, VR, AR, 3D Modeling (Core) - Score 100
- * P2: AI, Dev Tools (Support) - Score 50
- * Others - Score 0
  */
 const calculatePriority = (title, tags) => {
   const t = title.toLowerCase();
@@ -61,7 +73,10 @@ const calculatePriority = (title, tags) => {
 const normalizeDevTo = (article) => {
   const type = determineType(article.title, article.tag_list, article.url);
   const tags = article.tag_list;
-  const imageUrl = getThumbnail(article.url, article.cover_image || article.social_image, type, tags);
+
+  // Dev.to usually provides good cover images
+  const fallbackImg = article.cover_image || article.social_image;
+  const imageUrl = getThumbnail(article.url, fallbackImg, type, tags);
 
   return {
     id: `devto-${article.id}`,
@@ -98,10 +113,10 @@ const normalizeHN = (item) => {
   const type = determineType(item.title, [], item.url || '');
   const tags = ['hacker-news', 'tech'];
 
-  const title = item.title.toLowerCase();
-  if (title.includes('ai') || title.includes('gpt')) tags.push('ai');
-  if (title.includes('xr') || title.includes('vr') || title.includes('vision pro')) tags.push('xr');
-  if (title.includes('unity')) tags.push('unity');
+  const titleText = item.title.toLowerCase();
+  if (titleText.includes('ai') || titleText.includes('gpt')) tags.push('ai');
+  if (titleText.includes('xr') || titleText.includes('vr') || titleText.includes('vision pro')) tags.push('xr');
+  if (titleText.includes('unity')) tags.push('unity');
 
   const imageUrl = getThumbnail(item.url || '', null, type, tags);
 
@@ -143,11 +158,21 @@ const normalizeReddit = (child, subreddit) => {
 
   const type = item.is_video ? 'Video' : (item.url.includes('imgur.com') || item.url.match(/\.(jpg|jpeg|png|gif)$/) ? 'Post' : 'Article');
 
+  // Reddit image extraction improvement
+  let redditImage = null;
+  if (item.preview && item.preview.images && item.preview.images[0]) {
+    redditImage = item.preview.images[0].source.url.replace(/&amp;/g, '&');
+  } else if (item.thumbnail && item.thumbnail.startsWith('http')) {
+    redditImage = item.thumbnail;
+  } else if (item.url && item.url.match(/\.(jpg|jpeg|png|gif)$/)) {
+    redditImage = item.url;
+  }
+
   return {
     id: `reddit-${item.id}`,
     title: item.title,
     description: item.selftext ? item.selftext.substring(0, 200) + '...' : `Posted in r/${subreddit} by ${item.author}`,
-    imageUrl: item.thumbnail && item.thumbnail.startsWith('http') ? item.thumbnail : getCategoryPlaceholder(type, tags),
+    imageUrl: getThumbnail(item.url, redditImage, type, tags),
     author: item.author,
     authorImage: `https://ui-avatars.com/api/?name=${item.author}&background=random`,
     date: date,
