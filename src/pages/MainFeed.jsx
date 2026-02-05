@@ -1,29 +1,52 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import TopHeader from '../components/Feed/TopHeader';
 import FilterBar from '../components/Feed/FilterBar';
 import TrendingTopics from '../components/Feed/TrendingTopics';
 import FeedCard from '../components/Feed/FeedCard';
 import { fetchAllNews } from '../services/newsService';
+import { getHistory, saveToHistory, shouldFetchNewData } from '../services/storageService';
+import { getMetricsForArticles } from '../services/metricsService';
 
 const MainFeed = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-  const [activeDateRange, setActiveDateRange] = useState('All Time');
+  const [activeDateRange, setActiveDateRange] = useState('This Week');
+  const [activeSort, setActiveSort] = useState('Latest');
   const [activeHashtag, setActiveHashtag] = useState(null);
   const [items, setItems] = useState([]);
+  const [metrics, setMetrics] = useState({});
   const [loading, setLoading] = useState(true);
 
+  const availableCategories = useMemo(() => {
+    return [...new Set(items.map(item => item.type))];
+  }, [items]);
+
   useEffect(() => {
-    const loadNews = async () => {
+    const loadNews = async (force = false) => {
       setLoading(true);
-      const data = await fetchAllNews();
+
+      let data = getHistory();
+
+      if (data.length === 0 || force || shouldFetchNewData()) {
+        const freshData = await fetchAllNews();
+        data = saveToHistory(freshData);
+      }
+
       setItems(data);
+
+      // Load metrics for these items
+      const ids = data.map(item => item.id);
+      const m = await getMetricsForArticles(ids);
+      setMetrics(m);
+
       setLoading(false);
     };
+
     loadNews();
 
-    // Refresh news every 15 minutes
-    const interval = setInterval(loadNews, 15 * 60 * 1000);
+    // Auto-refresh logic (once a day check)
+    const interval = setInterval(() => loadNews(), 12 * 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -68,25 +91,31 @@ const MainFeed = () => {
       return matchesHashtag && matchesSearch && matchesCategory && matchesDate;
     });
 
-    // Sort by XR priority then date descending
+    // Sorting Logic
     filtered.sort((a, b) => {
-      const xrTags = ['xr', 'vr', 'ar', 'mixedreality', 'spatialcomputing', 'vision pro'];
-      const aIsXR = a.tags.some(t => xrTags.includes(t.toLowerCase())) || a.title.toLowerCase().includes('vision pro');
-      const bIsXR = b.tags.some(t => xrTags.includes(t.toLowerCase())) || b.title.toLowerCase().includes('vision pro');
+      // Priority 1 items always stay up if we are in "Latest" or "All"
+      if (activeSort === 'Latest') {
+        if (b.priority !== a.priority) return b.priority - a.priority;
+        return new Date(b.date) - new Date(a.date);
+      }
 
-      if (aIsXR && !bIsXR) return -1;
-      if (!aIsXR && bIsXR) return 1;
+      if (activeSort === 'Most Viewed') {
+        const viewsA = metrics[a.id]?.views || 0;
+        const viewsB = metrics[b.id]?.views || 0;
+        return viewsB - viewsA;
+      }
 
-      return new Date(b.date) - new Date(a.date);
+      if (activeSort === 'Most Liked') {
+        const likesA = metrics[a.id]?.helpful || 0;
+        const likesB = metrics[b.id]?.helpful || 0;
+        return likesB - likesA;
+      }
+
+      return 0;
     });
 
-    // Limit to top 10 for weekly/daily view if not searching
-    if ((activeDateRange === 'This Week' || activeDateRange === 'Today') && searchQuery === '') {
-      return filtered.slice(0, 10);
-    }
-
     return filtered;
-  }, [searchQuery, activeCategory, activeDateRange, activeHashtag, items]);
+  }, [searchQuery, activeCategory, activeDateRange, activeSort, activeHashtag, items, metrics]);
 
   return (
     <div className="bg-off-white min-h-screen">
@@ -97,6 +126,9 @@ const MainFeed = () => {
           setActiveCategory={setActiveCategory}
           activeDateRange={activeDateRange}
           setActiveDateRange={setActiveDateRange}
+          activeSort={activeSort}
+          setActiveSort={setActiveSort}
+          availableCategories={availableCategories}
         />
         <TrendingTopics items={items} activeHashtag={activeHashtag} setActiveHashtag={setActiveHashtag} />
 
@@ -114,33 +146,59 @@ const MainFeed = () => {
               </button>
             )}
           </div>
-          {searchQuery === '' && (activeDateRange === 'This Week' || activeDateRange === 'Today') && filteredItems.length > 0 && (
-            <span className="text-[10px] font-bold text-primary uppercase">Top Picks</span>
-          )}
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-1 text-[10px] font-bold text-primary uppercase hover:opacity-70 transition-opacity"
+          >
+            <span className="material-symbols-outlined text-xs">refresh</span>
+            Update
+          </button>
         </div>
 
         <div className="space-y-6 px-4">
           {loading ? (
             <div className="flex flex-col items-center py-20">
               <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
-              <p className="text-soft-gray font-medium">Fetching real-time tech news...</p>
+              <p className="text-soft-gray font-medium">Loading Fyware’s Curated Feed...</p>
             </div>
-          ) : filteredItems.length > 0 ? (
-            filteredItems.map(item => (
-              <FeedCard key={item.id} item={item} />
-            ))
           ) : (
-            <div className="py-20 text-center">
-              <span className="material-symbols-outlined text-6xl text-gray-200 mb-4">search_off</span>
-              <p className="text-soft-gray font-medium">No results found for your filters.</p>
-              {activeDateRange !== 'All Time' && (
-                <button
-                  onClick={() => setActiveDateRange('All Time')}
-                  className="mt-4 text-primary text-sm font-bold underline"
-                >
-                  Show all stories
-                </button>
-              )}
+            <div className="relative">
+              <AnimatePresence mode="popLayout">
+                {filteredItems.length > 0 ? (
+                  filteredItems.map(item => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.3 }}
+                      className="mb-6 last:mb-0"
+                    >
+                      <FeedCard item={item} />
+                    </motion.div>
+                  ))
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="py-20 text-center"
+                  >
+                    <span className="material-symbols-outlined text-6xl text-gray-200 mb-4">search_off</span>
+                    <p className="text-soft-gray font-medium">No results found for your filters.</p>
+                    <button
+                      onClick={() => {
+                        setActiveDateRange('All Time');
+                        setActiveCategory('All');
+                        setSearchQuery('');
+                      }}
+                      className="mt-4 text-primary text-sm font-bold underline"
+                    >
+                      Clear all filters
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </div>

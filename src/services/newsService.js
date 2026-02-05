@@ -1,5 +1,7 @@
 const DEV_TO_API = 'https://dev.to/api/articles';
 const HN_API_BASE = 'https://hacker-news.firebaseio.com/v0';
+const REDDIT_API_UNITY = 'https://www.reddit.com/r/Unity3D/top.json?limit=20&t=week';
+const REDDIT_API_VR = 'https://www.reddit.com/r/virtualreality/top.json?limit=20&t=week';
 
 /**
  * Gets a placeholder image based on category if original is missing
@@ -9,7 +11,7 @@ const getCategoryPlaceholder = (type, tags = []) => {
   if (lowerTags.includes('ai') || lowerTags.includes('openai') || lowerTags.includes('gpt')) {
     return 'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=1000&auto=format&fit=crop'; // AI Placeholder
   }
-  if (lowerTags.includes('xr') || lowerTags.includes('vr') || lowerTags.includes('ar') || lowerTags.includes('mixedreality')) {
+  if (lowerTags.includes('xr') || lowerTags.includes('vr') || lowerTags.includes('ar') || lowerTags.includes('mixedreality') || lowerTags.includes('unity')) {
     return 'https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?q=80&w=1000&auto=format&fit=crop'; // XR Placeholder
   }
   if (type === 'Video') {
@@ -31,7 +33,30 @@ const getThumbnail = (url, fallback, type, tags) => {
 };
 
 /**
- * Normalizes a Dev.to article to our internal feed item format
+ * Assigns a priority score based on Fyware DNA
+ * P1: Unity, VR, AR, 3D Modeling (Core) - Score 100
+ * P2: AI, Dev Tools (Support) - Score 50
+ * Others - Score 0
+ */
+const calculatePriority = (title, tags) => {
+  const t = title.toLowerCase();
+  const ts = tags.map(tag => tag.toLowerCase());
+
+  const isP1 = t.includes('unity') || t.includes('vr') || t.includes('ar') || t.includes('3d') || t.includes('modeling') || t.includes('xr') || t.includes('spatial') ||
+               ts.some(tag => ['unity', 'vr', 'ar', '3d', 'xr', 'spatialcomputing', 'mixedreality'].includes(tag));
+
+  if (isP1) return 100;
+
+  const isP2 = t.includes('ai') || t.includes('gpt') || t.includes('llm') || t.includes('tool') || t.includes('library') ||
+               ts.some(tag => ['ai', 'openai', 'gpt', 'tool', 'opensource'].includes(tag));
+
+  if (isP2) return 50;
+
+  return 0;
+};
+
+/**
+ * Normalizes a Dev.to article
  */
 const normalizeDevTo = (article) => {
   const type = determineType(article.title, article.tag_list, article.url);
@@ -50,6 +75,7 @@ const normalizeDevTo = (article) => {
     tags: tags,
     type: type,
     sourceUrl: article.url,
+    priority: calculatePriority(article.title, tags),
     fullContent: {
       title: article.title,
       author: article.user.name,
@@ -72,17 +98,17 @@ const normalizeHN = (item) => {
   const type = determineType(item.title, [], item.url || '');
   const tags = ['hacker-news', 'tech'];
 
-  // Basic tagging based on title for HN
   const title = item.title.toLowerCase();
   if (title.includes('ai') || title.includes('gpt')) tags.push('ai');
   if (title.includes('xr') || title.includes('vr') || title.includes('vision pro')) tags.push('xr');
+  if (title.includes('unity')) tags.push('unity');
 
   const imageUrl = getThumbnail(item.url || '', null, type, tags);
 
   return {
     id: `hn-${item.id}`,
     title: item.title,
-    description: `Discussion on Hacker News with ${item.score} points and ${item.descendants || 0} comments.`,
+    description: `Discussion on Hacker News with ${item.score} points.`,
     imageUrl: imageUrl,
     author: item.by,
     authorImage: `https://ui-avatars.com/api/?name=${item.by}&background=random`,
@@ -91,6 +117,7 @@ const normalizeHN = (item) => {
     tags: tags,
     type: type,
     sourceUrl: item.url || `https://news.ycombinator.com/item?id=${item.id}`,
+    priority: calculatePriority(item.title, tags),
     fullContent: {
       title: item.title,
       author: item.by,
@@ -99,7 +126,45 @@ const normalizeHN = (item) => {
       authorImage: `https://ui-avatars.com/api/?name=${item.by}&background=random`,
       tldr: [`Discussion with ${item.score} points.`],
       tags: tags,
-      paragraphs: [`This story is trending on Hacker News. Join the conversation or read the original source.`],
+      paragraphs: [`This story is trending on Hacker News. Join the conversation.`],
+      quote: null
+    }
+  };
+};
+
+/**
+ * Normalizes a Reddit item
+ */
+const normalizeReddit = (child, subreddit) => {
+  const item = child.data;
+  const date = new Date(item.created_utc * 1000).toISOString();
+  const tags = [subreddit.toLowerCase(), 'reddit'];
+  if (item.over_18) tags.push('nsfw');
+
+  const type = item.is_video ? 'Video' : (item.url.includes('imgur.com') || item.url.match(/\.(jpg|jpeg|png|gif)$/) ? 'Post' : 'Article');
+
+  return {
+    id: `reddit-${item.id}`,
+    title: item.title,
+    description: item.selftext ? item.selftext.substring(0, 200) + '...' : `Posted in r/${subreddit} by ${item.author}`,
+    imageUrl: item.thumbnail && item.thumbnail.startsWith('http') ? item.thumbnail : getCategoryPlaceholder(type, tags),
+    author: item.author,
+    authorImage: `https://ui-avatars.com/api/?name=${item.author}&background=random`,
+    date: date,
+    readTime: '4 min read',
+    tags: tags,
+    type: type,
+    sourceUrl: `https://reddit.com${item.permalink}`,
+    priority: calculatePriority(item.title, tags),
+    fullContent: {
+      title: item.title,
+      author: item.author,
+      date: new Date(date).toLocaleDateString(),
+      readTime: '4 min read',
+      authorImage: `https://ui-avatars.com/api/?name=${item.author}&background=random`,
+      tldr: [item.title],
+      tags: tags,
+      paragraphs: [item.selftext || "Check out this discussion on Reddit."],
       quote: null
     }
   };
@@ -121,12 +186,11 @@ const determineType = (title, tags, url) => {
 };
 
 /**
- * Fetches articles from Dev.to based on technical tags
+ * Fetches articles from Dev.to
  */
 export const fetchDevToArticles = async () => {
   try {
-    // Specifically adding XR and Mixed Reality tags as requested
-    const tags = ['javascript', 'ai', 'xr', 'mixedreality', 'vr', 'ar', 'spatialcomputing', 'react', 'rust'];
+    const tags = ['javascript', 'ai', 'xr', 'mixedreality', 'vr', 'ar', 'spatialcomputing', 'react', 'rust', 'unity3d', 'threejs'];
     const response = await fetch(`${DEV_TO_API}?per_page=40&tags=${tags.join(',')}`);
     if (!response.ok) throw new Error('Failed to fetch from Dev.to');
     const data = await response.json();
@@ -138,7 +202,7 @@ export const fetchDevToArticles = async () => {
 };
 
 /**
- * Fetches top stories from Hacker News and filters for technical relevance
+ * Fetches from Hacker News
  */
 export const fetchHackerNews = async () => {
   try {
@@ -157,7 +221,7 @@ export const fetchHackerNews = async () => {
       })
     );
 
-    const techKeywords = ['ai', 'software', 'programming', 'code', 'rust', 'react', 'engine', 'tech', 'web', 'dev', 'tool', 'xr', 'vr', 'ar', 'mixed reality', 'spatial', 'database', 'frontend', 'backend', 'llm', 'gpt', 'vision pro'];
+    const techKeywords = ['ai', 'software', 'programming', 'code', 'rust', 'react', 'engine', 'tech', 'web', 'dev', 'tool', 'xr', 'vr', 'ar', 'mixed reality', 'spatial', 'unity', '3d', 'modeling', 'vision pro'];
     return items
       .filter(item => item && item.title && !item.dead && !item.deleted)
       .filter(item => {
@@ -172,24 +236,38 @@ export const fetchHackerNews = async () => {
 };
 
 /**
- * Aggregates and sorts all news sources, prioritizing XR content
+ * Fetches from Reddit
+ */
+export const fetchReddit = async (url, subreddit) => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch from r/${subreddit}`);
+    const data = await response.json();
+    return data.data.children.map(child => normalizeReddit(child, subreddit));
+  } catch (error) {
+    console.error(`Error fetching Reddit r/${subreddit}:`, error);
+    return [];
+  }
+};
+
+/**
+ * Aggregates all news sources
  */
 export const fetchAllNews = async () => {
-  const [devTo, hn] = await Promise.all([
+  const [devTo, hn, redditUnity, redditVR] = await Promise.all([
     fetchDevToArticles(),
-    fetchHackerNews()
+    fetchHackerNews(),
+    fetchReddit(REDDIT_API_UNITY, 'Unity3D'),
+    fetchReddit(REDDIT_API_VR, 'virtualreality')
   ]);
 
-  const combined = [...devTo, ...hn];
+  const combined = [...devTo, ...hn, ...redditUnity, ...redditVR];
 
-  // Sort and prioritize XR
+  // Sort by priority first, then by date
   return combined.sort((a, b) => {
-    const aIsXR = a.tags.some(t => ['xr', 'vr', 'ar', 'mixedreality', 'spatialcomputing'].includes(t.toLowerCase()));
-    const bIsXR = b.tags.some(t => ['xr', 'vr', 'ar', 'mixedreality', 'spatialcomputing'].includes(t.toLowerCase()));
-
-    if (aIsXR && !bIsXR) return -1;
-    if (!aIsXR && bIsXR) return 1;
-
+    if (b.priority !== a.priority) {
+      return b.priority - a.priority;
+    }
     return new Date(b.date) - new Date(a.date);
   });
 };

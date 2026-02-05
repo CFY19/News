@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { handleShare } from '../../utils/share';
 import { getMetricsForArticles, trackView } from '../../services/metricsService';
 
@@ -8,6 +9,8 @@ const FeedCard = ({ item }) => {
   const [shareStatus, setShareStatus] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [metrics, setMetrics] = useState({ views: 0, helpful: 0 });
+
+  const isP1 = item.priority >= 100;
 
   useEffect(() => {
     const loadMetrics = async () => {
@@ -55,24 +58,37 @@ const FeedCard = ({ item }) => {
   const authorImage = item.authorImage || `https://ui-avatars.com/api/?name=${item.author}&background=random`;
 
   return (
-    <article
+    <motion.article
       onClick={handleCardClick}
-      className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-soft hover:shadow-lg transition-all duration-300 cursor-pointer group"
+      whileHover={{ y: -4 }}
+      className={`bg-white rounded-2xl overflow-hidden shadow-soft hover:shadow-xl transition-all duration-300 cursor-pointer group border ${
+        isP1 ? 'border-amber-400/50 ring-1 ring-amber-400/20 shadow-amber-500/5' : 'border-gray-100'
+      }`}
     >
       {displayImage && !imageError && (
         <div className="relative h-56 bg-cover bg-center overflow-hidden">
           <img
             src={displayImage}
             alt={item.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
             onError={() => setImageError(true)}
           />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
+
+          {isP1 && (
+            <div className="absolute top-4 right-4 z-10">
+              <span className="bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-lg flex items-center gap-1">
+                <span className="material-symbols-outlined text-[12px] fill-1">verified</span>
+                Recommended
+              </span>
+            </div>
+          )}
+
           {item.type === 'Video' && (
             <div className="absolute inset-0 flex items-center justify-center">
-               <button className="size-16 rounded-full bg-white/20 glass-effect flex items-center justify-center text-white border border-white/40 shadow-2xl scale-100 group-hover:scale-110 transition-transform duration-300">
+               <div className="size-16 rounded-full bg-white/20 glass-effect flex items-center justify-center text-white border border-white/40 shadow-2xl scale-100 group-hover:scale-110 transition-transform duration-300">
                 <span className="material-symbols-outlined text-4xl fill-1">play_arrow</span>
-              </button>
+              </div>
             </div>
           )}
         </div>
@@ -98,7 +114,9 @@ const FeedCard = ({ item }) => {
           </div>
         </div>
 
-        <h3 className="text-xl font-bold leading-tight mb-3 text-deep-charcoal tracking-tight group-hover:text-primary transition-colors">
+        <h3 className={`text-xl font-bold leading-tight mb-3 tracking-tight group-hover:text-primary transition-colors ${
+          isP1 ? 'text-amber-900' : 'text-deep-charcoal'
+        }`}>
           {item.title}
         </h3>
 
@@ -108,7 +126,7 @@ const FeedCard = ({ item }) => {
 
         <div className="flex flex-wrap gap-2.5 mb-5">
           {item.tags.map(tag => (
-            <span key={tag} className="text-primary text-xs font-semibold">#{tag}</span>
+            <span key={tag} className={`text-xs font-semibold ${isP1 ? 'text-amber-600' : 'text-primary'}`}>#{tag}</span>
           ))}
         </div>
 
@@ -127,7 +145,7 @@ const FeedCard = ({ item }) => {
           <div className="flex items-center gap-2">
             {shareStatus && <span className="text-[10px] font-bold text-brand-teal animate-pulse uppercase">{shareStatus}</span>}
             <button
-              className="text-gray-400 hover:text-primary transition-colors p-2"
+              className="text-gray-400 hover:text-primary transition-colors p-2 flex items-center gap-1"
               onClick={onShare}
               title="Share"
             >
@@ -136,7 +154,7 @@ const FeedCard = ({ item }) => {
           </div>
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 };
 
