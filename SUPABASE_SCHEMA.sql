@@ -3,7 +3,7 @@
 
 -- 1. Article Metrics Table
 -- Stores the global counters for each article
-CREATE TABLE article_metrics (
+CREATE TABLE IF NOT EXISTS article_metrics (
   article_id TEXT PRIMARY KEY,
   views INTEGER DEFAULT 0,
   helpful INTEGER DEFAULT 0,
@@ -12,7 +12,7 @@ CREATE TABLE article_metrics (
 
 -- 2. User Likes Table
 -- Stores which user (by fingerprint) liked which article to allow toggling
-CREATE TABLE user_likes (
+CREATE TABLE IF NOT EXISTS user_likes (
   id BIGSERIAL PRIMARY KEY,
   article_id TEXT NOT NULL,
   user_fingerprint TEXT NOT NULL,
@@ -20,7 +20,23 @@ CREATE TABLE user_likes (
   UNIQUE(article_id, user_fingerprint)
 );
 
--- 3. RPC: Global Increment
+-- 3. Persistent Articles Table
+-- Stores curated news from RSS feeds
+CREATE TABLE IF NOT EXISTS articles (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  image_url TEXT,
+  source_url TEXT UNIQUE NOT NULL,
+  author TEXT,
+  published_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  tags TEXT[] DEFAULT '{}',
+  priority INTEGER DEFAULT 0,
+  source_name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. RPC: Global Increment
 -- Handles atomic increments for views and helpful votes
 CREATE OR REPLACE FUNCTION increment_article_metric(
   p_target_id TEXT,
@@ -60,7 +76,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 4. RPC: Global Decrement
+-- 5. RPC: Global Decrement
 -- Handles atomic decrement when a user un-likes an article
 CREATE OR REPLACE FUNCTION decrement_article_metric(
   p_target_id TEXT,
@@ -88,3 +104,19 @@ BEGIN
   RETURN COALESCE(new_val, 0);
 END;
 $$ LANGUAGE plpgsql;
+
+-- 6. Maintenance: Purge Old Articles
+-- Deletes articles older than 30 days
+CREATE OR REPLACE FUNCTION purge_old_articles()
+RETURNS void AS $$
+BEGIN
+  -- Delete metrics and likes associated with old articles (optional, keeping for cleanup)
+  DELETE FROM user_likes WHERE article_id IN (SELECT id FROM articles WHERE published_at < NOW() - INTERVAL '30 days');
+  DELETE FROM article_metrics WHERE article_id IN (SELECT id FROM articles WHERE published_at < NOW() - INTERVAL '30 days');
+  -- Delete the articles themselves
+  DELETE FROM articles WHERE published_at < NOW() - INTERVAL '30 days';
+END;
+$$ LANGUAGE plpgsql;
+
+-- To schedule this (requires pg_cron enabled in Supabase):
+-- SELECT cron.schedule('0 0 * * *', 'SELECT purge_old_articles();');

@@ -1,3 +1,6 @@
+import { getPersistedArticles, syncRSSWithSupabase } from './rssService';
+import { supabase } from './supabaseClient';
+
 const DEV_TO_API = 'https://dev.to/api/articles';
 const HN_API_BASE = 'https://hacker-news.firebaseio.com/v0';
 
@@ -277,6 +280,20 @@ export const fetchReddit = async (subreddit, query) => {
  * Aggregates all news sources
  */
 export const fetchAllNews = async () => {
+  // Trigger background sync for RSS feeds
+  syncRSSWithSupabase().catch(err => console.error('Background sync failed:', err));
+
+  // Purge old articles once a day
+  const lastPurge = localStorage.getItem('fyware_last_purge');
+  const now = Date.now();
+  if (!lastPurge || now - parseInt(lastPurge) > 24 * 60 * 60 * 1000) {
+    supabase?.rpc('purge_old_articles').then(() => {
+      localStorage.setItem('fyware_last_purge', now.toString());
+    }).catch(err => console.error('Purge failed:', err));
+  }
+
+  const persistedPromise = getPersistedArticles();
+
   const devToPromise = fetch(`${DEV_TO_API}?per_page=40&tags=javascript,ai,xr,react,rust,unity3d`)
     .then(res => res.json())
     .then(data => data.map(normalizeDevTo))
@@ -290,10 +307,18 @@ export const fetchAllNews = async () => {
 
   const redditPromises = REDDIT_SOURCES.map(source => fetchReddit(source.subreddit, source.query));
 
-  const allResults = await Promise.all([devToPromise, hnPromise, ...redditPromises]);
+  const allResults = await Promise.all([persistedPromise, devToPromise, hnPromise, ...redditPromises]);
   const combined = allResults.flat();
 
-  return combined.sort((a, b) => {
+  // Dedup by sourceUrl
+  const seen = new Set();
+  const deduped = combined.filter(item => {
+    if (seen.has(item.sourceUrl)) return false;
+    seen.add(item.sourceUrl);
+    return true;
+  });
+
+  return deduped.sort((a, b) => {
     if (b.priority !== a.priority) return b.priority - a.priority;
     return new Date(b.date) - new Date(a.date);
   });

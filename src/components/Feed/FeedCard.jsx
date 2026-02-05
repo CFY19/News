@@ -15,8 +15,8 @@ const FeedCard = ({ item }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [showBurst, setShowBurst] = useState(false);
 
-  // Strict Recommended Logic
-  const isRecommended = RECOMMENDED_KEYWORDS.some(kw =>
+  // Strict Recommended Logic - consider both keywords and explicit priority from RSS
+  const isRecommended = item.priority >= 100 || RECOMMENDED_KEYWORDS.some(kw =>
     item.title.toLowerCase().includes(kw) ||
     item.tags.some(tag => tag.toLowerCase().includes(kw.replace(' ', '')))
   );
