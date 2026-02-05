@@ -1,6 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { trackHelpful, getMetricsForArticles, hasVotedHelpful } from '../../services/metricsService';
 
 const DetailContent = ({ item }) => {
+  const [metrics, setMetrics] = useState({ views: 0, helpful: 0 });
+  const [isHelpful, setIsHelpful] = useState(false);
+
+  useEffect(() => {
+    const loadMetrics = async () => {
+      const data = await getMetricsForArticles([item.id]);
+      if (data[item.id]) {
+        setMetrics(data[item.id]);
+      }
+      setIsHelpful(hasVotedHelpful(item.id));
+    };
+    loadMetrics();
+  }, [item.id]);
+
+  const handleHelpfulClick = async () => {
+    if (isHelpful) return;
+    const newHelpfulCount = await trackHelpful(item.id);
+    setMetrics(prev => ({ ...prev, helpful: newHelpfulCount }));
+    setIsHelpful(true);
+  };
+
   const content = item.fullContent || {
     title: item.title,
     author: item.author,
@@ -21,6 +43,19 @@ const DetailContent = ({ item }) => {
 
   return (
     <main className="flex flex-col p-6 pb-12">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3 text-soft-gray">
+          <div className="flex items-center gap-1">
+            <span className="material-symbols-outlined text-base">visibility</span>
+            <span className="text-xs font-bold">{metrics.views} views</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="material-symbols-outlined text-base text-brand-teal">thumb_up</span>
+            <span className="text-xs font-bold">{metrics.helpful} found this helpful</span>
+          </div>
+        </div>
+      </div>
+
       <h1 className="text-slate-900 tracking-tight text-3xl font-bold leading-[1.2] mb-6">
         {content.title}
       </h1>
@@ -82,14 +117,6 @@ const DetailContent = ({ item }) => {
             {p}
           </p>
         ))}
-
-        {content.quote && (
-          <div className="bg-soft-gray/50 border-l-4 border-slate-300 p-5 rounded-r-lg mb-6">
-            <p className="text-slate-700 text-base leading-relaxed italic">
-              "{content.quote}"
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="mt-4 mb-12">
@@ -110,9 +137,17 @@ const DetailContent = ({ item }) => {
       <footer className="mt-auto border-t border-slate-100 p-8 flex flex-col items-center gap-4 bg-slate-50/50 -mx-6">
         <p className="text-sm font-medium text-slate-500">Was this summary helpful?</p>
         <div className="flex gap-4">
-          <button className="flex items-center gap-2 px-8 py-2.5 rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">
-            <span className="material-symbols-outlined text-green-600">thumb_up</span>
-            <span className="text-sm font-bold text-slate-700">Yes</span>
+          <button
+            onClick={handleHelpfulClick}
+            disabled={isHelpful}
+            className={`flex items-center gap-2 px-8 py-2.5 rounded-full border shadow-sm transition-all ${
+              isHelpful
+                ? 'bg-green-50 border-green-200 text-green-600'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <span className="material-symbols-outlined">{isHelpful ? 'check_circle' : 'thumb_up'}</span>
+            <span className="text-sm font-bold">{isHelpful ? 'Helpful!' : 'Yes'}</span>
           </button>
           <button className="flex items-center gap-2 px-8 py-2.5 rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">
             <span className="material-symbols-outlined text-red-500">thumb_down</span>

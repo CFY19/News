@@ -68,8 +68,17 @@ const MainFeed = () => {
       return matchesHashtag && matchesSearch && matchesCategory && matchesDate;
     });
 
-    // Sort by date descending
-    filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Sort by XR priority then date descending
+    filtered.sort((a, b) => {
+      const xrTags = ['xr', 'vr', 'ar', 'mixedreality', 'spatialcomputing', 'vision pro'];
+      const aIsXR = a.tags.some(t => xrTags.includes(t.toLowerCase())) || a.title.toLowerCase().includes('vision pro');
+      const bIsXR = b.tags.some(t => xrTags.includes(t.toLowerCase())) || b.title.toLowerCase().includes('vision pro');
+
+      if (aIsXR && !bIsXR) return -1;
+      if (!aIsXR && bIsXR) return 1;
+
+      return new Date(b.date) - new Date(a.date);
+    });
 
     // Limit to top 10 for weekly/daily view if not searching
     if ((activeDateRange === 'This Week' || activeDateRange === 'Today') && searchQuery === '') {

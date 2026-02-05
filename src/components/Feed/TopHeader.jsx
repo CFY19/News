@@ -8,7 +8,7 @@ const TopHeader = ({ searchQuery, setSearchQuery }) => {
           <div className="size-9 rounded-xl bg-primary flex items-center justify-center text-white shadow-sm">
             <span className="material-symbols-outlined text-xl">terminal</span>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-deep-charcoal">Tech Feed</h1>
+          <h1 className="text-xl font-bold tracking-tight text-deep-charcoal">Fyware’s Top Feed</h1>
         </div>
         <div className="flex items-center gap-3">
           {/* Notifications removed as per request */}

@@ -1,11 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { handleShare } from '../../utils/share';
+import { getMetricsForArticles, trackView } from '../../services/metricsService';
 
 const FeedCard = ({ item }) => {
   const navigate = useNavigate();
   const [shareStatus, setShareStatus] = useState(null);
   const [imageError, setImageError] = useState(false);
+  const [metrics, setMetrics] = useState({ views: 0, helpful: 0 });
+
+  useEffect(() => {
+    const loadMetrics = async () => {
+      const data = await getMetricsForArticles([item.id]);
+      if (data[item.id]) {
+        setMetrics(data[item.id]);
+      }
+    };
+    loadMetrics();
+  }, [item.id]);
+
+  const handleCardClick = async () => {
+    // Increment view count
+    await trackView(item.id);
+    navigate(`/detail/${item.id}`, { state: { item } });
+  };
 
   const getBadgeColor = (type) => {
     switch (type) {
@@ -27,12 +45,18 @@ const FeedCard = ({ item }) => {
     }
   };
 
+  const formattedDate = new Date(item.date).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
   const displayImage = item.imageUrl || item.image;
   const authorImage = item.authorImage || `https://ui-avatars.com/api/?name=${item.author}&background=random`;
 
   return (
     <article
-      onClick={() => navigate(`/detail/${item.id}`, { state: { item } })}
+      onClick={handleCardClick}
       className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-soft hover:shadow-lg transition-all duration-300 cursor-pointer group"
     >
       {displayImage && !imageError && (
@@ -55,11 +79,23 @@ const FeedCard = ({ item }) => {
       )}
 
       <div className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <span className={`${getBadgeColor(item.type)} text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md`}>
-            {item.type}
-          </span>
-          <span className="text-soft-gray text-xs font-medium">• {item.readTime}</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <span className={`${getBadgeColor(item.type)} text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md`}>
+              {item.type}
+            </span>
+            <span className="text-soft-gray text-[10px] font-medium uppercase tracking-tighter">{formattedDate}</span>
+          </div>
+          <div className="flex items-center gap-3 text-soft-gray">
+            <div className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">visibility</span>
+              <span className="text-[10px] font-bold">{metrics.views}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm text-brand-teal">thumb_up</span>
+              <span className="text-[10px] font-bold">{metrics.helpful}</span>
+            </div>
+          </div>
         </div>
 
         <h3 className="text-xl font-bold leading-tight mb-3 text-deep-charcoal tracking-tight group-hover:text-primary transition-colors">
