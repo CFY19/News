@@ -10,6 +10,12 @@ const REDDIT_SOURCES = [
   { subreddit: 'mixedreality', query: 'top.json?limit=10&t=week' }
 ];
 
+// Strict Keywords for Recommended Badge
+const RECOMMENDED_KEYWORDS = [
+  'unity', 'vr', 'ar', 'xr', 'mixed reality', '3d modeling', 'spatial computing',
+  'virtual reality', 'augmented reality', 'spatialcomputing', 'mixedreality', '3dmodeling'
+];
+
 /**
  * Gets a branded Fyware placeholder image based on category if original is missing.
  */
@@ -86,24 +92,25 @@ const getThumbnail = (url, fallback, type, tags) => {
     return `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg`;
   }
 
-  if (url.includes('linkedin.com') || url.includes('instagram.com')) {
-    return getFywarePlaceholder(type, tags);
-  }
+  // For LinkedIn/Instagram we try to use the fallback if provided (which might be the social image)
+  // If fallback is already a placeholder or null, we use our branded one but only as a last resort.
 
-  return getHighResImage(fallback) || getFywarePlaceholder(type, tags);
+  return getHighResImage(fallback) || null; // Return null if nothing found, FeedCard will handle it
 };
 
 /**
  * Assigns a priority score based on Fyware DNA
+ * ONLY assigns 100 if strict keywords are present.
  */
 const calculatePriority = (title, tags) => {
   const t = title.toLowerCase();
   const ts = tags.map(tag => tag.toLowerCase());
 
-  const isXR = t.includes('unity') || t.includes('vr') || t.includes('ar') || t.includes('3d') || t.includes('modeling') || t.includes('xr') || t.includes('spatial') || t.includes('oculus') || t.includes('mixed reality') ||
-               ts.some(tag => ['unity', 'vr', 'ar', '3d', 'xr', 'spatialcomputing', 'mixedreality'].includes(tag));
+  const matchesStrict = RECOMMENDED_KEYWORDS.some(kw =>
+    t.includes(kw) || ts.some(tag => tag.includes(kw.replace(' ', '')))
+  );
 
-  if (isXR) return 100; // Priority 1 (Recommended)
+  if (matchesStrict) return 100; // Priority 1 (Recommended)
 
   const isAI = t.includes('ai') || t.includes('gpt') || t.includes('llm') || t.includes('tool') ||
                ts.some(tag => ['ai', 'openai', 'gpt', 'tool', 'opensource'].includes(tag));
@@ -167,7 +174,7 @@ const normalizeHN = (item) => {
   return {
     id: `hn-${item.id}`,
     title: item.title,
-    description: `Trending on Hacker News. Discussion with ${item.score} points.`,
+    description: `Discussion with ${item.score} points.`,
     imageUrl: imageUrl,
     author: item.by,
     authorImage: `https://ui-avatars.com/api/?name=${item.by}&background=random`,
@@ -185,7 +192,7 @@ const normalizeHN = (item) => {
       authorImage: `https://ui-avatars.com/api/?name=${item.by}&background=random`,
       tldr: [`Discussion with ${item.score} points.`],
       tags: tags,
-      paragraphs: [`Join the conversation on Hacker News regarding "${item.title}".`],
+      paragraphs: [`Join the conversation on Hacker News.`],
       quote: null
     }
   };

@@ -17,10 +17,9 @@ const DetailContent = ({ item }) => {
   }, [item.id]);
 
   const handleHelpfulClick = async () => {
-    if (isHelpful) return;
     const newHelpfulCount = await trackHelpful(item.id);
     setMetrics(prev => ({ ...prev, helpful: newHelpfulCount }));
-    setIsHelpful(true);
+    setIsHelpful(hasVotedHelpful(item.id));
   };
 
   const content = item.fullContent || {
@@ -139,20 +138,21 @@ const DetailContent = ({ item }) => {
         <div className="flex gap-4">
           <button
             onClick={handleHelpfulClick}
-            disabled={isHelpful}
             className={`flex items-center gap-2 px-8 py-2.5 rounded-full border shadow-sm transition-all ${
               isHelpful
-                ? 'bg-green-50 border-green-200 text-green-600'
+                ? 'bg-primary text-white border-primary'
                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <span className="material-symbols-outlined">{isHelpful ? 'check_circle' : 'thumb_up'}</span>
-            <span className="text-sm font-bold">{isHelpful ? 'Helpful!' : 'Yes'}</span>
+            <span className={`material-symbols-outlined ${isHelpful ? 'fill-1' : ''}`}>thumb_up</span>
+            <span className="text-sm font-bold">{isHelpful ? 'Helpful' : 'Yes'}</span>
           </button>
-          <button className="flex items-center gap-2 px-8 py-2.5 rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">
-            <span className="material-symbols-outlined text-red-500">thumb_down</span>
-            <span className="text-sm font-bold text-slate-700">No</span>
-          </button>
+          {!isHelpful && (
+            <button className="flex items-center gap-2 px-8 py-2.5 rounded-full bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-red-500">thumb_down</span>
+              <span className="text-sm font-bold text-slate-700">No</span>
+            </button>
+          )}
         </div>
         <div className="w-32 h-1.5 bg-slate-300 rounded-full mt-6 opacity-20"></div>
       </footer>

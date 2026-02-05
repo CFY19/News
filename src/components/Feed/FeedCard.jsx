@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { handleShare } from '../../utils/share';
 import { getMetricsForArticles, trackView, toggleHelpful, hasVotedHelpful } from '../../services/metricsService';
 
+const RECOMMENDED_KEYWORDS = [
+  'unity', 'vr', 'ar', 'xr', 'mixed reality', '3d modeling', 'spatial computing',
+  'virtual reality', 'augmented reality', 'spatialcomputing', 'mixedreality', '3dmodeling'
+];
+
 const FeedCard = ({ item }) => {
   const [shareStatus, setShareStatus] = useState(null);
   const [imageError, setImageError] = useState(false);
@@ -10,8 +15,11 @@ const FeedCard = ({ item }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [showBurst, setShowBurst] = useState(false);
 
-  // Recommended logic: XR / Unity Content
-  const isRecommended = item.priority >= 100 || item.tags.includes('xr');
+  // Strict Recommended Logic
+  const isRecommended = RECOMMENDED_KEYWORDS.some(kw =>
+    item.title.toLowerCase().includes(kw) ||
+    item.tags.some(tag => tag.toLowerCase().includes(kw.replace(' ', '')))
+  );
 
   useEffect(() => {
     const loadMetrics = async () => {
@@ -25,22 +33,38 @@ const FeedCard = ({ item }) => {
   }, [item.id]);
 
   const handleActionClick = async () => {
-    await trackView(item.id);
+    const newViews = await trackView(item.id);
+    setMetrics(prev => ({ ...prev, views: newViews }));
   };
 
   const onLikeToggle = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Animation trigger (only on like)
-    if (!isLiked) {
+    // Optimistic Update
+    const wasLiked = isLiked;
+    setIsLiked(!wasLiked);
+    setMetrics(prev => ({
+      ...prev,
+      helpful: wasLiked ? Math.max(0, prev.helpful - 1) : prev.helpful + 1
+    }));
+
+    if (!wasLiked) {
       setShowBurst(true);
       setTimeout(() => setShowBurst(false), 800);
     }
 
-    const newHelpfulCount = await toggleHelpful(item.id);
-    setMetrics(prev => ({ ...prev, helpful: newHelpfulCount }));
-    setIsLiked(!isLiked);
+    try {
+      const newHelpfulCount = await toggleHelpful(item.id);
+      setMetrics(prev => ({ ...prev, helpful: newHelpfulCount }));
+    } catch (err) {
+      // Revert on error
+      setIsLiked(wasLiked);
+      setMetrics(prev => ({
+        ...prev,
+        helpful: wasLiked ? prev.helpful : Math.max(0, prev.helpful - 1)
+      }));
+    }
   };
 
   const onShare = async (e) => {
@@ -50,6 +74,17 @@ const FeedCard = ({ item }) => {
     if (result.success && result.method === 'clipboard') {
       setShareStatus('Copied!');
       setTimeout(() => setShareStatus(null), 2000);
+    }
+  };
+
+  const getBadgeColor = (type) => {
+    switch (type) {
+      case 'Article': return 'bg-primary/10 text-primary';
+      case 'Tool': return 'bg-brand-teal/10 text-brand-teal';
+      case 'Video': return 'bg-rose-500/10 text-rose-500';
+      case 'Reel': return 'bg-primary/10 text-primary';
+      case 'Post': return 'bg-deep-charcoal/10 text-deep-charcoal';
+      default: return 'bg-gray-100 text-gray-600';
     }
   };
 
@@ -76,15 +111,15 @@ const FeedCard = ({ item }) => {
         onClick={handleActionClick}
         className="block no-underline text-inherit"
       >
-        {displayImage && !imageError && (
-          <div className="relative h-56 bg-cover bg-center overflow-hidden">
+        {displayImage && !imageError ? (
+          <div className="relative aspect-video bg-gray-50 overflow-hidden flex items-center justify-center border-b border-gray-100">
             <img
               src={displayImage}
               alt={item.title}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-700"
               onError={() => setImageError(true)}
             />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/[0.02] transition-colors duration-300"></div>
 
             {isRecommended && (
               <div className="absolute top-4 right-4 z-10">
@@ -96,25 +131,26 @@ const FeedCard = ({ item }) => {
             )}
 
             {item.type === 'Video' && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="size-16 rounded-full bg-white/20 glass-effect flex items-center justify-center text-white border border-white/40 shadow-2xl">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="size-14 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center text-white border border-white/50 shadow-2xl">
                   <span className="material-symbols-outlined text-4xl fill-1">play_arrow</span>
                 </div>
               </div>
             )}
           </div>
+        ) : (
+          <div className="h-4 bg-gradient-to-r from-gray-50 to-white"></div>
         )}
 
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className={`bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md`}>
+              <span className={`${getBadgeColor(item.type)} text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md`}>
                 {item.type}
               </span>
               <span className="text-soft-gray text-xs font-bold uppercase tracking-tighter">{formattedDate}</span>
             </div>
 
-            {/* Interactive Metrics Bar */}
             <div className="flex items-center gap-3 text-soft-gray">
               <div className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">visibility</span>

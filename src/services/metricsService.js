@@ -23,8 +23,8 @@ export const trackView = async (articleId) => {
     if (!supabase) throw new Error('Supabase not configured');
 
     const { data, error } = await supabase.rpc('increment_article_metric', {
-      target_id: articleId,
-      metric_name: 'view'
+      p_target_id: articleId,
+      p_metric_name: 'view'
     });
 
     if (error) throw error;
@@ -53,9 +53,9 @@ export const toggleHelpful = async (articleId) => {
     const rpcName = isCurrentlyLiked ? 'decrement_article_metric' : 'increment_article_metric';
 
     const { data, error } = await supabase.rpc(rpcName, {
-      target_id: articleId,
-      metric_name: 'helpful',
-      user_fingerprint: userId
+      p_target_id: articleId,
+      p_metric_name: 'helpful',
+      p_user_fingerprint: userId
     });
 
     if (error) throw error;
