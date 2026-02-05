@@ -1,12 +1,10 @@
-import { supabase } from './supabaseClient';
-
 const STORAGE_KEY_PREFIX = 'fyware_metrics_';
 const USER_ID_KEY = 'fyware_user_id';
 
 /**
  * Gets or creates a unique user fingerprint
  */
-const getUserId = () => {
+export const getUserId = () => {
   let userId = localStorage.getItem(USER_ID_KEY);
   if (!userId) {
     userId = crypto.randomUUID();
@@ -16,70 +14,44 @@ const getUserId = () => {
 };
 
 /**
- * Tracks a view globally. Views increment on every unique session/page load.
+ * Tracks a view globally.
  */
 export const trackView = async (articleId) => {
   try {
-    if (!supabase) throw new Error('Supabase not configured');
-
-    const { data, error } = await supabase.rpc('increment_article_metric', {
-      p_target_id: articleId,
-      p_metric_name: 'view'
+    const response = await fetch('/api/views', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ articleId })
     });
-
-    if (error) throw error;
-    return data;
+    const data = await response.json();
+    return data.views;
   } catch (err) {
-    // Fallback logic for when DB is not connected
-    const globalCounts = JSON.parse(localStorage.getItem('fyware_global_metrics') || '{}');
-    if (!globalCounts[articleId]) globalCounts[articleId] = { views: 0, helpful: 0 };
-    globalCounts[articleId].views += 1;
-    localStorage.setItem('fyware_global_metrics', JSON.stringify(globalCounts));
-    return globalCounts[articleId].views;
+    console.error('Error tracking view:', err);
+    return 0;
   }
 };
 
 /**
  * Toggles the 'Helpful' status for a user.
- * Increments if not liked, decrements if already liked.
  */
 export const toggleHelpful = async (articleId) => {
   const userId = getUserId();
-  const isCurrentlyLiked = hasVotedHelpful(articleId);
-
   try {
-    if (!supabase) throw new Error('Supabase not configured');
-
-    const rpcName = isCurrentlyLiked ? 'decrement_article_metric' : 'increment_article_metric';
-
-    const { data, error } = await supabase.rpc(rpcName, {
-      p_target_id: articleId,
-      p_metric_name: 'helpful',
-      p_user_fingerprint: userId
+    const response = await fetch('/api/likes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ articleId, userFingerprint: userId })
     });
+    const data = await response.json();
 
-    if (error) throw error;
-
-    const state = { viewed: true, helpful: !isCurrentlyLiked };
+    // Update local state for immediate checks
+    const state = { viewed: true, helpful: data.isLiked };
     localStorage.setItem(`${STORAGE_KEY_PREFIX}${articleId}`, JSON.stringify(state));
 
-    return data;
+    return data.helpful;
   } catch (err) {
-    const globalCounts = JSON.parse(localStorage.getItem('fyware_global_metrics') || '{}');
-    if (!globalCounts[articleId]) globalCounts[articleId] = { views: 0, helpful: 0 };
-
-    if (isCurrentlyLiked) {
-      globalCounts[articleId].helpful = Math.max(0, globalCounts[articleId].helpful - 1);
-    } else {
-      globalCounts[articleId].helpful += 1;
-    }
-
-    localStorage.setItem('fyware_global_metrics', JSON.stringify(globalCounts));
-
-    const state = { viewed: true, helpful: !isCurrentlyLiked };
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}${articleId}`, JSON.stringify(state));
-
-    return globalCounts[articleId].helpful;
+    console.error('Error toggling helpful:', err);
+    return 0;
   }
 };
 
@@ -88,31 +60,12 @@ export const toggleHelpful = async (articleId) => {
  */
 export const getMetricsForArticles = async (articleIds) => {
   try {
-    if (!supabase) throw new Error('Supabase not configured');
-
-    const { data, error } = await supabase
-      .from('article_metrics')
-      .select('article_id, views, helpful')
-      .in('article_id', articleIds);
-
-    if (error) throw error;
-
-    const results = {};
-    data.forEach(row => {
-      results[row.article_id] = { views: row.views, helpful: row.helpful };
-    });
-
-    articleIds.forEach(id => {
-      if (!results[id]) results[id] = { views: 0, helpful: 0 };
-    });
-
-    return results;
+    const response = await fetch(`/api/metrics?ids=${articleIds.join(',')}`);
+    return await response.json();
   } catch (err) {
-    const globalCounts = JSON.parse(localStorage.getItem('fyware_global_metrics') || '{}');
+    console.error('Error fetching metrics:', err);
     const results = {};
-    articleIds.forEach(id => {
-      results[id] = globalCounts[id] || { views: 0, helpful: 0 };
-    });
+    articleIds.forEach(id => results[id] = { views: 0, helpful: 0 });
     return results;
   }
 };
@@ -125,5 +78,4 @@ export const hasVotedHelpful = (articleId) => {
   return data ? JSON.parse(data).helpful : false;
 };
 
-// Alias for compatibility
 export const trackHelpful = toggleHelpful;
