@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { handleShare } from '../../utils/share';
-import { getMetricsForArticles, trackView, trackHelpful, hasVotedHelpful } from '../../services/metricsService';
+import { getMetricsForArticles, trackView, toggleHelpful, hasVotedHelpful } from '../../services/metricsService';
 
 const FeedCard = ({ item }) => {
   const [shareStatus, setShareStatus] = useState(null);
@@ -10,10 +10,8 @@ const FeedCard = ({ item }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [showBurst, setShowBurst] = useState(false);
 
-  // Recommended logic: Unity, VR, AR
-  const isRecommended = item.tags.some(tag =>
-    ['unity', 'vr', 'ar', 'xr', 'mixedreality', 'virtualreality', 'augmentedreality'].includes(tag.toLowerCase())
-  );
+  // Recommended logic: XR / Unity Content
+  const isRecommended = item.priority >= 100 || item.tags.includes('xr');
 
   useEffect(() => {
     const loadMetrics = async () => {
@@ -26,21 +24,23 @@ const FeedCard = ({ item }) => {
     loadMetrics();
   }, [item.id]);
 
-  const handleActionClick = async (e) => {
+  const handleActionClick = async () => {
     await trackView(item.id);
   };
 
-  const onLike = async (e) => {
+  const onLikeToggle = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isLiked) return;
 
-    setShowBurst(true);
-    setTimeout(() => setShowBurst(false), 800);
+    // Animation trigger (only on like)
+    if (!isLiked) {
+      setShowBurst(true);
+      setTimeout(() => setShowBurst(false), 800);
+    }
 
-    const newHelpfulCount = await trackHelpful(item.id);
+    const newHelpfulCount = await toggleHelpful(item.id);
     setMetrics(prev => ({ ...prev, helpful: newHelpfulCount }));
-    setIsLiked(true);
+    setIsLiked(!isLiked);
   };
 
   const onShare = async (e) => {
@@ -50,17 +50,6 @@ const FeedCard = ({ item }) => {
     if (result.success && result.method === 'clipboard') {
       setShareStatus('Copied!');
       setTimeout(() => setShareStatus(null), 2000);
-    }
-  };
-
-  const getBadgeColor = (type) => {
-    switch (type) {
-      case 'Article': return 'bg-primary/10 text-primary';
-      case 'Tool': return 'bg-brand-teal/10 text-brand-teal';
-      case 'Video': return 'bg-rose-500/10 text-rose-500';
-      case 'Reel': return 'bg-primary/10 text-primary';
-      case 'Post': return 'bg-deep-charcoal/10 text-deep-charcoal';
-      default: return 'bg-gray-100 text-gray-600';
     }
   };
 
@@ -108,7 +97,7 @@ const FeedCard = ({ item }) => {
 
             {item.type === 'Video' && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="size-16 rounded-full bg-white/20 glass-effect flex items-center justify-center text-white border border-white/40 shadow-2xl scale-100 group-hover:scale-110 transition-transform duration-300">
+                <div className="size-16 rounded-full bg-white/20 glass-effect flex items-center justify-center text-white border border-white/40 shadow-2xl">
                   <span className="material-symbols-outlined text-4xl fill-1">play_arrow</span>
                 </div>
               </div>
@@ -119,20 +108,56 @@ const FeedCard = ({ item }) => {
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className={`${getBadgeColor(item.type)} text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md`}>
+              <span className={`bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md`}>
                 {item.type}
               </span>
-              {/* Increased font size for date as requested */}
               <span className="text-soft-gray text-xs font-bold uppercase tracking-tighter">{formattedDate}</span>
             </div>
+
+            {/* Interactive Metrics Bar */}
             <div className="flex items-center gap-3 text-soft-gray">
               <div className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">visibility</span>
                 <span className="text-[10px] font-bold">{metrics.views}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className={`material-symbols-outlined text-sm ${isLiked ? 'text-brand-teal fill-1' : ''}`}>thumb_up</span>
-                <span className="text-[10px] font-bold">{metrics.helpful}</span>
+
+              <div className="relative">
+                <motion.button
+                  whileTap={{ scale: 0.8 }}
+                  onClick={onLikeToggle}
+                  className={`flex items-center gap-1 transition-colors ${isLiked ? 'text-brand-teal' : 'hover:text-primary'}`}
+                >
+                  <motion.span
+                    animate={isLiked ? { scale: [1, 1.3, 1] } : {}}
+                    className={`material-symbols-outlined text-sm ${isLiked ? 'fill-1' : ''}`}
+                  >
+                    thumb_up
+                  </motion.span>
+                  <span className="text-[10px] font-bold">{metrics.helpful}</span>
+                </motion.button>
+
+                <AnimatePresence>
+                  {showBurst && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: 1, scale: 1.5 }}
+                      exit={{ opacity: 0, scale: 2 }}
+                      className="absolute inset-0 pointer-events-none flex items-center justify-center"
+                    >
+                      {[...Array(6)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ x: 0, y: 0 }}
+                          animate={{
+                            x: (i % 2 === 0 ? 1 : -1) * Math.random() * 30,
+                            y: (i < 3 ? -1 : 1) * Math.random() * 30
+                          }}
+                          className="size-1 bg-brand-teal rounded-full absolute"
+                        />
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -166,69 +191,22 @@ const FeedCard = ({ item }) => {
               <span className="text-xs font-semibold text-deep-charcoal">{item.author}</span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+               {shareStatus && <span className="text-[10px] font-bold text-brand-teal animate-pulse uppercase">{shareStatus}</span>}
+              <button
+                className="text-gray-400 hover:text-primary transition-colors p-1"
+                onClick={onShare}
+              >
+                <span className="material-symbols-outlined text-xl">share</span>
+              </button>
               <span className="text-primary text-xs font-bold uppercase tracking-widest flex items-center gap-1 group-hover:underline">
-                Read More
+                Read
                 <span className="material-symbols-outlined text-xs">open_in_new</span>
               </span>
             </div>
           </div>
         </div>
       </a>
-
-      {/* Action Row - Interactive Like and Share */}
-      <div className="px-6 pb-6 flex justify-between items-center mt-[-10px]">
-        <div className="relative">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={onLike}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-              isLiked
-                ? 'bg-brand-teal/10 text-brand-teal'
-                : 'bg-gray-50 text-soft-gray hover:bg-gray-100'
-            }`}
-          >
-            <motion.span
-              animate={isLiked ? { scale: [1, 1.4, 1] } : {}}
-              className={`material-symbols-outlined text-xl ${isLiked ? 'fill-1' : ''}`}
-            >
-              thumb_up
-            </motion.span>
-            <span className="text-xs font-bold">{isLiked ? 'Helpful!' : 'Helpful'}</span>
-          </motion.button>
-
-          <AnimatePresence>
-            {showBurst && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1.5 }}
-                exit={{ opacity: 0, scale: 2 }}
-                className="absolute inset-0 pointer-events-none flex items-center justify-center"
-              >
-                {[...Array(6)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ x: 0, y: 0 }}
-                    animate={{ x: (i % 2 === 0 ? 1 : -1) * Math.random() * 40, y: (i < 3 ? -1 : 1) * Math.random() * 40 }}
-                    className="size-1 bg-brand-teal rounded-full absolute"
-                  />
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {shareStatus && <span className="text-[10px] font-bold text-brand-teal animate-pulse uppercase">{shareStatus}</span>}
-          <button
-            className="text-gray-400 hover:text-primary transition-colors p-2 flex items-center gap-1"
-            onClick={onShare}
-            title="Share"
-          >
-            <span className="material-symbols-outlined text-2xl">share</span>
-          </button>
-        </div>
-      </div>
     </motion.article>
   );
 };

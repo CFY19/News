@@ -1,8 +1,8 @@
 import React from 'react';
 
-const categories = ['All', 'Articles', 'Videos', 'Tools', 'Reels', 'Posts'];
-const dateRanges = ['Today', 'This Week', 'This Month', 'All Time'];
-const popularityFilters = ['Latest', 'Most Viewed', 'Most Liked'];
+const categories = ['All', 'Articles', 'Videos', 'Tools', 'Posts'];
+const dateRanges = ['Today', 'Week', 'Month', 'All'];
+const popularityFilters = ['Latest', 'Viewed', 'Liked'];
 
 const FilterBar = ({
   activeCategory,
@@ -19,7 +19,7 @@ const FilterBar = ({
 
   return (
     <div className="flex flex-col gap-3 pt-2 pb-4">
-      {/* Category Chips - Primary Row */}
+      {/* Category Selection */}
       <div className="flex gap-2 px-4 overflow-x-auto no-scrollbar">
         {visibleCategories.map((cat) => (
           <button
@@ -36,40 +36,43 @@ const FilterBar = ({
         ))}
       </div>
 
-      {/* Consolidated Time & Sort Row - Compact Chips */}
+      {/* ULTRA-COMPACT Consolidated Row: Time + Sort */}
       <div className="flex px-4 overflow-x-auto no-scrollbar items-center gap-4 py-2 bg-gray-50/50 border-y border-gray-100">
-        {/* Time Chips */}
-        <div className="flex items-center gap-2 pr-4 border-r border-gray-200 h-8">
-          <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Time:</span>
+        <div className="flex items-center gap-1.5 pr-3 border-r border-gray-200 h-8">
+          <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Time</span>
           {dateRanges.map((range) => (
             <button
               key={range}
-              onClick={() => setActiveDateRange(range)}
-              className={`px-3 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-all ${
-                activeDateRange === range
+              onClick={() => setActiveDateRange(range === 'Week' ? 'This Week' : range === 'Month' ? 'This Month' : range === 'All' ? 'All Time' : range)}
+              className={`px-3 py-1 rounded-md text-[10px] font-bold whitespace-nowrap transition-all ${
+                (activeDateRange === range ||
+                 (range === 'Week' && activeDateRange === 'This Week') ||
+                 (range === 'Month' && activeDateRange === 'This Month') ||
+                 (range === 'All' && activeDateRange === 'All Time'))
                   ? 'bg-brand-teal text-white shadow-sm'
                   : 'bg-white text-soft-gray border border-gray-200 hover:bg-brand-teal/5'
               }`}
             >
-              {range === 'This Week' ? 'Week' : range === 'This Month' ? 'Month' : range === 'All Time' ? 'All' : range}
+              {range}
             </button>
           ))}
         </div>
 
-        {/* Sort Chips */}
-        <div className="flex items-center gap-2 h-8">
-          <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Sort:</span>
+        <div className="flex items-center gap-1.5 h-8">
+          <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Sort</span>
           {popularityFilters.map((sort) => (
             <button
               key={sort}
-              onClick={() => setActiveSort(sort)}
-              className={`px-3 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
-                activeSort === sort
+              onClick={() => setActiveSort(sort === 'Viewed' ? 'Most Viewed' : sort === 'Liked' ? 'Most Liked' : sort)}
+              className={`px-3 py-1 rounded-md text-[10px] font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+                (activeSort === sort ||
+                 (sort === 'Viewed' && activeSort === 'Most Viewed') ||
+                 (sort === 'Liked' && activeSort === 'Most Liked'))
                   ? 'bg-deep-charcoal text-white shadow-sm'
                   : 'bg-white text-soft-gray border border-gray-200 hover:bg-gray-100'
               }`}
             >
-              {sort === 'Most Viewed' ? 'Viewed' : sort === 'Most Liked' ? 'Liked' : sort}
+              {sort}
             </button>
           ))}
         </div>
