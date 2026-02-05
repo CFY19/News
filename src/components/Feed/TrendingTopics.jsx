@@ -8,6 +8,9 @@ const TrendingTopics = ({ items, activeHashtag, setActiveHashtag }) => {
     items.forEach(item => {
       item.tags.forEach(tag => {
         const t = tag.toLowerCase();
+        // Skip tags that should have been consolidated
+        if (['virtualreality', 'augmentedreality', 'reddit'].includes(t)) return;
+
         tagCounts[t] = (tagCounts[t] || 0) + 1;
       });
     });
@@ -23,11 +26,13 @@ const TrendingTopics = ({ items, activeHashtag, setActiveHashtag }) => {
     if (xrIndex !== -1) {
       xrEntry = sortedEntries.splice(xrIndex, 1)[0];
     } else {
-      xrEntry = ['xr', 0];
+      // Check if we have items that SHOULD be XR but are labelled differently (fallback)
+      const count = tagCounts['xr'] || 0;
+      xrEntry = ['xr', count];
     }
 
     // Re-insert XR at the beginning
-    const finalEntries = [xrEntry, ...sortedEntries].slice(0, 5);
+    const finalEntries = [xrEntry, ...sortedEntries.filter(([name]) => name !== 'xr')].slice(0, 5);
 
     return finalEntries.map(([name, count], index) => {
       const colors = [

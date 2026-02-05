@@ -1,15 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import DetailHeader from '../components/Detail/DetailHeader';
 import DetailContent from '../components/Detail/DetailContent';
+import { getHistory } from '../services/storageService';
 
 const ContentDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Try to get item from state first (passed from FeedCard)
-  const item = location.state?.item;
+  // Robust Item Retrieval: Try state -> Try history -> Try fetching (optional)
+  const item = useMemo(() => {
+    if (location.state?.item) return location.state.item;
+
+    // If state is missing (refresh), find in local history
+    const history = getHistory();
+    return history.find(a => a.id === id);
+  }, [id, location.state]);
 
   useEffect(() => {
     window.scrollTo(0, 0);

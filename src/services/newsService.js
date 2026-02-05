@@ -30,6 +30,56 @@ const getFywarePlaceholder = (type, tags = []) => {
 };
 
 /**
+ * Normalizes tags based on Fyware consolidation logic.
+ * - Group VirtualReality/AugmentedReality under XR
+ * - Remove Reddit tag
+ */
+const normalizeTags = (tags) => {
+  if (!tags) return [];
+
+  let processed = tags.map(tag => tag.toLowerCase());
+
+  // Consolidate XR
+  const xrKeywords = ['virtualreality', 'augmentedreality', 'vr', 'ar', 'mixedreality', 'spatialcomputing'];
+  let hasXR = processed.some(tag => xrKeywords.includes(tag));
+
+  processed = processed.filter(tag => !xrKeywords.includes(tag) && tag !== 'reddit');
+
+  if (hasXR && !processed.includes('xr')) {
+    processed.unshift('xr');
+  } else if (hasXR && processed.includes('xr')) {
+    // Already has xr, just ensure it's at the front
+    processed = ['xr', ...processed.filter(t => t !== 'xr')];
+  }
+
+  return processed;
+};
+
+/**
+ * Adjusts image URL to request higher resolution if possible.
+ */
+const getHighResImage = (url) => {
+  if (!url) return url;
+
+  // Handle common small-image parameters
+  let highRes = url;
+
+  // LinkedIn/Social thumb patterns
+  highRes = highRes.replace(/&t=small/g, '&t=large');
+  highRes = highRes.replace(/width=100/g, 'width=1000');
+  highRes = highRes.replace(/height=100/g, 'height=1000');
+  highRes = highRes.replace(/_thumb\./g, '_large.');
+  highRes = highRes.replace(/\/small\//g, '/large/');
+
+  // Reddit specific preview decoding
+  if (url.includes('preview.redd.it')) {
+    highRes = url.replace(/&amp;/g, '&');
+  }
+
+  return highRes;
+};
+
+/**
  * Extracts YouTube thumbnail if URL is a YouTube link
  */
 const getThumbnail = (url, fallback, type, tags) => {
@@ -44,7 +94,7 @@ const getThumbnail = (url, fallback, type, tags) => {
     return getFywarePlaceholder(type, tags);
   }
 
-  return fallback || getFywarePlaceholder(type, tags);
+  return getHighResImage(fallback) || getFywarePlaceholder(type, tags);
 };
 
 /**
@@ -72,7 +122,7 @@ const calculatePriority = (title, tags) => {
  */
 const normalizeDevTo = (article) => {
   const type = determineType(article.title, article.tag_list, article.url);
-  const tags = article.tag_list;
+  const tags = normalizeTags(article.tag_list);
 
   // Dev.to usually provides good cover images
   const fallbackImg = article.cover_image || article.social_image;
@@ -111,12 +161,14 @@ const normalizeDevTo = (article) => {
 const normalizeHN = (item) => {
   const date = new Date(item.time * 1000).toISOString();
   const type = determineType(item.title, [], item.url || '');
-  const tags = ['hacker-news', 'tech'];
+  let tags = ['hacker-news', 'tech'];
 
   const titleText = item.title.toLowerCase();
   if (titleText.includes('ai') || titleText.includes('gpt')) tags.push('ai');
   if (titleText.includes('xr') || titleText.includes('vr') || titleText.includes('vision pro')) tags.push('xr');
   if (titleText.includes('unity')) tags.push('unity');
+
+  tags = normalizeTags(tags);
 
   const imageUrl = getThumbnail(item.url || '', null, type, tags);
 
@@ -153,15 +205,17 @@ const normalizeHN = (item) => {
 const normalizeReddit = (child, subreddit) => {
   const item = child.data;
   const date = new Date(item.created_utc * 1000).toISOString();
-  const tags = [subreddit.toLowerCase(), 'reddit'];
+  let tags = [subreddit.toLowerCase(), 'reddit'];
   if (item.over_18) tags.push('nsfw');
+
+  tags = normalizeTags(tags);
 
   const type = item.is_video ? 'Video' : (item.url.includes('imgur.com') || item.url.match(/\.(jpg|jpeg|png|gif)$/) ? 'Post' : 'Article');
 
   // Reddit image extraction improvement
   let redditImage = null;
   if (item.preview && item.preview.images && item.preview.images[0]) {
-    redditImage = item.preview.images[0].source.url.replace(/&amp;/g, '&');
+    redditImage = item.preview.images[0].source.url;
   } else if (item.thumbnail && item.thumbnail.startsWith('http')) {
     redditImage = item.thumbnail;
   } else if (item.url && item.url.match(/\.(jpg|jpeg|png|gif)$/)) {
