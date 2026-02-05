@@ -3,38 +3,31 @@ import TopHeader from '../components/Feed/TopHeader';
 import FilterBar from '../components/Feed/FilterBar';
 import TrendingTopics from '../components/Feed/TrendingTopics';
 import FeedCard from '../components/Feed/FeedCard';
-import { feedItems as initialFeedItems } from '../data';
+import { fetchAllNews } from '../services/newsService';
 
 const MainFeed = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-  const [activeDateRange, setActiveDateRange] = useState('This Week');
+  const [activeDateRange, setActiveDateRange] = useState('All Time');
   const [activeHashtag, setActiveHashtag] = useState(null);
-  const [items, setItems] = useState(initialFeedItems);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Example of how to autoupdate the feed from an external source
-  /*
   useEffect(() => {
-    const fetchFeed = async () => {
-      try {
-        const response = await fetch('https://your-api-or-github-json-url.com/feed.json');
-        const data = await response.json();
-        if (data && data.length > 0) {
-          setItems(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch autoupdated feed:', error);
-      }
+    const loadNews = async () => {
+      setLoading(true);
+      const data = await fetchAllNews();
+      setItems(data);
+      setLoading(false);
     };
-    fetchFeed();
-    // Refresh every 30 minutes
-    const interval = setInterval(fetchFeed, 30 * 60 * 1000);
+    loadNews();
+
+    // Refresh news every 15 minutes
+    const interval = setInterval(loadNews, 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
-  */
 
   const filteredItems = useMemo(() => {
-    // Sanitize search query: trim and remove special characters that could be used for injection
     const sanitizedQuery = searchQuery.trim().replace(/[<>{}()]/g, '');
 
     let filtered = items.filter(item => {
@@ -44,7 +37,7 @@ const MainFeed = () => {
 
       // Search logic
       const matchesSearch = item.title.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
-                          item.summary.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
+                          item.description.toLowerCase().includes(sanitizedQuery.toLowerCase()) ||
                           item.tags.some(tag => tag.toLowerCase().includes(sanitizedQuery.toLowerCase()));
 
       // Category logic
@@ -75,10 +68,10 @@ const MainFeed = () => {
       return matchesHashtag && matchesSearch && matchesCategory && matchesDate;
     });
 
-    // Sort by date descending (most recent first)
+    // Sort by date descending
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // Limit to top 10 for weekly/daily view if not searching, to satisfy the "10 most relevant" requirement
+    // Limit to top 10 for weekly/daily view if not searching
     if ((activeDateRange === 'This Week' || activeDateRange === 'Today') && searchQuery === '') {
       return filtered.slice(0, 10);
     }
@@ -96,12 +89,12 @@ const MainFeed = () => {
           activeDateRange={activeDateRange}
           setActiveDateRange={setActiveDateRange}
         />
-        <TrendingTopics activeHashtag={activeHashtag} setActiveHashtag={setActiveHashtag} />
+        <TrendingTopics items={items} activeHashtag={activeHashtag} setActiveHashtag={setActiveHashtag} />
 
         <div className="flex items-center justify-between px-4 mb-4">
           <div className="flex items-center gap-2">
             <h2 className="text-xs font-bold uppercase tracking-widest text-soft-gray">
-              {activeHashtag ? `Stories tagged: ${activeHashtag}` : (searchQuery ? 'Search Results' : (activeCategory === 'All' ? 'Latest Stories' : `${activeCategory}`))}
+              {activeHashtag ? `Stories tagged: #${activeHashtag}` : (searchQuery ? 'Search Results' : (activeCategory === 'All' ? 'Latest Stories' : `${activeCategory}`))}
             </h2>
             {activeHashtag && (
               <button
@@ -112,13 +105,18 @@ const MainFeed = () => {
               </button>
             )}
           </div>
-          {searchQuery === '' && (activeDateRange === 'This Week' || activeDateRange === 'Today') && filteredItems.length === 10 && (
-            <span className="text-[10px] font-bold text-primary uppercase">Top 10 Picks</span>
+          {searchQuery === '' && (activeDateRange === 'This Week' || activeDateRange === 'Today') && filteredItems.length > 0 && (
+            <span className="text-[10px] font-bold text-primary uppercase">Top Picks</span>
           )}
         </div>
 
         <div className="space-y-6 px-4">
-          {filteredItems.length > 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center py-20">
+              <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
+              <p className="text-soft-gray font-medium">Fetching real-time tech news...</p>
+            </div>
+          ) : filteredItems.length > 0 ? (
             filteredItems.map(item => (
               <FeedCard key={item.id} item={item} />
             ))
@@ -126,6 +124,14 @@ const MainFeed = () => {
             <div className="py-20 text-center">
               <span className="material-symbols-outlined text-6xl text-gray-200 mb-4">search_off</span>
               <p className="text-soft-gray font-medium">No results found for your filters.</p>
+              {activeDateRange !== 'All Time' && (
+                <button
+                  onClick={() => setActiveDateRange('All Time')}
+                  className="mt-4 text-primary text-sm font-bold underline"
+                >
+                  Show all stories
+                </button>
+              )}
             </div>
           )}
         </div>

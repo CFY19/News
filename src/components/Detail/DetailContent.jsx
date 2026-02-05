@@ -13,6 +13,12 @@ const DetailContent = ({ item }) => {
     quote: null
   };
 
+  const handleImageError = (e) => {
+    e.target.style.display = 'none';
+  };
+
+  const authorImage = content.authorImage || `https://ui-avatars.com/api/?name=${content.author}&background=random`;
+
   return (
     <main className="flex flex-col p-6 pb-12">
       <h1 className="text-slate-900 tracking-tight text-3xl font-bold leading-[1.2] mb-6">
@@ -20,15 +26,30 @@ const DetailContent = ({ item }) => {
       </h1>
 
       <div className="flex items-center gap-4 mb-8">
-        <div
-          className="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-11 w-11 border border-slate-200"
-          style={{ backgroundImage: `url("${content.authorImage}")` }}
-        ></div>
+        <img
+          src={authorImage}
+          alt={content.author}
+          className="rounded-full h-11 w-11 border border-slate-200 object-cover"
+          onError={(e) => {
+            e.target.src = `https://ui-avatars.com/api/?name=${content.author}&background=random`;
+          }}
+        />
         <div className="flex flex-col">
           <p className="text-slate-900 text-base font-bold leading-none">{content.author}</p>
           <p className="text-slate-500 text-sm font-medium mt-1">{content.date} • {content.readTime}</p>
         </div>
       </div>
+
+      {item.imageUrl && (
+        <div className="mb-8 rounded-2xl overflow-hidden shadow-sm">
+          <img
+            src={item.imageUrl}
+            alt={item.title}
+            className="w-full h-auto object-cover max-h-96"
+            onError={handleImageError}
+          />
+        </div>
+      )}
 
       <div className="mb-8 relative">
         <div className="flex flex-col gap-3 rounded-2xl bg-tldr-tint border border-blue-100/50 p-6">

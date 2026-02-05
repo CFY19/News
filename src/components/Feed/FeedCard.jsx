@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { handleShare } from '../../utils/share';
 
 const FeedCard = ({ item }) => {
   const navigate = useNavigate();
+  const [shareStatus, setShareStatus] = useState(null);
+  const [imageError, setImageError] = useState(false);
 
   const getBadgeColor = (type) => {
     switch (type) {
@@ -15,15 +18,31 @@ const FeedCard = ({ item }) => {
     }
   };
 
+  const onShare = async (e) => {
+    e.stopPropagation();
+    const result = await handleShare(item);
+    if (result.success && result.method === 'clipboard') {
+      setShareStatus('Copied!');
+      setTimeout(() => setShareStatus(null), 2000);
+    }
+  };
+
   const displayImage = item.imageUrl || item.image;
+  const authorImage = item.authorImage || `https://ui-avatars.com/api/?name=${item.author}&background=random`;
 
   return (
     <article
-      onClick={() => navigate(`/detail/${item.id}`)}
+      onClick={() => navigate(`/detail/${item.id}`, { state: { item } })}
       className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-soft hover:shadow-lg transition-all duration-300 cursor-pointer group"
     >
-      {displayImage && (
-        <div className="relative h-56 bg-cover bg-center overflow-hidden" style={{ backgroundImage: `url('${displayImage}')` }}>
+      {displayImage && !imageError && (
+        <div className="relative h-56 bg-cover bg-center overflow-hidden">
+          <img
+            src={displayImage}
+            alt={item.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={() => setImageError(true)}
+          />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
           {item.type === 'Video' && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -59,17 +78,23 @@ const FeedCard = ({ item }) => {
 
         <div className="pt-5 border-t border-gray-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div
-              className="size-7 rounded-full bg-gray-100 border border-gray-200 bg-cover bg-center"
-              style={{ backgroundImage: `url('${item.authorImage}')` }}
-            ></div>
+            <img
+              src={authorImage}
+              alt={item.author}
+              className="size-7 rounded-full bg-gray-100 border border-gray-200 object-cover"
+              onError={(e) => {
+                e.target.src = `https://ui-avatars.com/api/?name=${item.author}&background=random`;
+              }}
+            />
             <span className="text-xs font-semibold text-deep-charcoal">{item.author}</span>
           </div>
-          <div className="flex gap-5">
-            <button className="text-gray-400 hover:text-primary transition-colors" onClick={(e) => { e.stopPropagation(); }}>
-              <span className="material-symbols-outlined text-2xl">bookmark</span>
-            </button>
-            <button className="text-gray-400 hover:text-primary transition-colors" onClick={(e) => { e.stopPropagation(); }}>
+          <div className="flex items-center gap-2">
+            {shareStatus && <span className="text-[10px] font-bold text-brand-teal animate-pulse uppercase">{shareStatus}</span>}
+            <button
+              className="text-gray-400 hover:text-primary transition-colors p-2"
+              onClick={onShare}
+              title="Share"
+            >
               <span className="material-symbols-outlined text-2xl">share</span>
             </button>
           </div>

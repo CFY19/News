@@ -1,7 +1,38 @@
-import React from 'react';
-import { trendingTopics } from '../../data';
+import React, { useMemo } from 'react';
 
-const TrendingTopics = ({ activeHashtag, setActiveHashtag }) => {
+const TrendingTopics = ({ items, activeHashtag, setActiveHashtag }) => {
+  const trendingTopics = useMemo(() => {
+    if (!items || items.length === 0) return [];
+
+    const tagCounts = {};
+    items.forEach(item => {
+      item.tags.forEach(tag => {
+        const t = tag.toLowerCase();
+        tagCounts[t] = (tagCounts[t] || 0) + 1;
+      });
+    });
+
+    return Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count], index) => {
+        const colors = [
+          'text-primary',
+          'text-brand-teal',
+          'text-deep-charcoal',
+          'text-rose-500',
+          'text-blue-600'
+        ];
+        return {
+          id: index + 1,
+          name: `#${name}`,
+          tagName: name,
+          count: `${count} stories`,
+          color: colors[index % colors.length]
+        };
+      });
+  }, [items]);
+
   const handleHashtagClick = (tag) => {
     if (activeHashtag === tag) {
       setActiveHashtag(null);
@@ -9,6 +40,8 @@ const TrendingTopics = ({ activeHashtag, setActiveHashtag }) => {
       setActiveHashtag(tag);
     }
   };
+
+  if (trendingTopics.length === 0) return null;
 
   return (
     <section className="py-6">
@@ -20,9 +53,9 @@ const TrendingTopics = ({ activeHashtag, setActiveHashtag }) => {
         {trendingTopics.map((topic) => (
           <button
             key={topic.id}
-            onClick={() => handleHashtagClick(topic.name)}
+            onClick={() => handleHashtagClick(topic.tagName)}
             className={`flex-none text-left rounded-xl p-3.5 w-44 shadow-sm transition-all border ${
-              activeHashtag === topic.name
+              activeHashtag === topic.tagName
                 ? 'bg-primary/10 border-primary ring-1 ring-primary'
                 : 'bg-white border-gray-200 hover:border-primary/50'
             }`}
